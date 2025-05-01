@@ -1,15 +1,15 @@
-var fs = require('fs');
-var streamHandler = require('./streamHandler.js')
+import fs from 'fs';
+import streamHandler from './streamHandler.js';
 
 var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
 var refreshInterval = settings.hystrix.refreshInterval || 500;
 
 var hystrixMetricsStreamHandlerFactory = this; // default to self
-exports.setHystrixMetricsStreamHandlerFactory = function(handler){
+function setHystrixMetricsStreamHandlerFactory(handler){
 	hystrixMetricsStreamHandlerFactory= handler;
 }
 
-exports.hystrixStream = function(request, response) {
+function hystrixStream(request, response) {
 	
 	if (!hystrixMetricsStreamHandlerFactory)
 	{
@@ -56,7 +56,13 @@ exports.hystrixStream = function(request, response) {
     })
 }
 
-exports.getHystrixMetricsStreamHandler = function(refreshInterval, callback /*error, handler*/){
+function getHystrixMetricsStreamHandler(refreshInterval, callback /*error, handler*/){
 	
 	streamHandler.getHandler(refreshInterval,callback);
+}
+
+export default {
+    setHystrixMetricsStreamHandlerFactory: setHystrixMetricsStreamHandlerFactory,
+    hystrixStream: hystrixStream,
+    getHystrixMetricsStreamHandler: getHystrixMetricsStreamHandler
 }

@@ -14,18 +14,20 @@
 * limitations under the License.
 *******************************************************************************/
 
-module.exports = function (settings) {
+import http from 'http';
+import log4js from 'log4js';
+
+
+export default function (settings) {
     var module = {};
-    var http = require('http')
 
     var contextRoot = settings.authContextRoot || "/acmeair-auth-service/rest/api"
 	var location = process.env.AUTH_SERVICE;
 	
     var hostAndPort = location.split(":");
 
-	var log4js = require('log4js');
 	var logger = log4js.getLogger('acmeairhttp');
-	logger.setLevel(settings.loggerLevel);
+    logger.level = settings.loggerLevel;
 	
     module.createSession = function (userid, callback /* (error, sessionId) */){
 		var path = contextRoot+"/authtoken/byuserid/" + userid;

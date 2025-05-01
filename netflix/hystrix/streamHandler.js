@@ -1,6 +1,6 @@
-var fs = require('fs');
-var metrix = require('./metrix.js');
-var command = require('./command.js');
+import fs from 'fs';
+import metrix from './metrix.js';
+import command from './command.js';
 
 var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
 var streamMaxConn = settings.hystrix.stream.maxConcurrentConnections || 5;
@@ -16,7 +16,6 @@ var getHandler = function (delay, callback /*error, handler*/){
 	concurrentConnections +=1;
 	callback(null, new StreamHandler(delay));
 };
-exports.getHandler= getHandler;
 
 function StreamHandler(delay) {
   this.data = [];
@@ -120,3 +119,5 @@ var pollFromMetrix = function(handler){
 	    })
 	}
 }
+
+export default { getHandler: getHandler };

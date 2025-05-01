@@ -14,64 +14,63 @@
 * limitations under the License.
 *******************************************************************************/
 
-module.exports = function (dbtype, settings) {
+import { v4 as uuidv4 } from 'uuid';
+import log4js from 'log4js';
+import createCassandraDataAccess from '../../dataaccess/cassandra/index.js';
+import createCloudantDataAccess from '../../dataaccess/cloudant/index.js';
+import createMongoDataAccess from '../../dataaccess/mongo/index.js';
+
+const dataAccessFactories = {
+    cassandra: createCassandraDataAccess,
+    cloudant: createCloudantDataAccess,
+    mongo: createMongoDataAccess
+};
+
+
+export default async function (dbtype, settings) {
     var module = {};
-	var uuid = require('node-uuid');
-	var log4js = require('log4js');
-	
-	var logger = log4js.getLogger('authservice/routes');
-	logger.setLevel(settings.loggerLevel);
+    var logger = log4js.getLogger('authservice/routes');
+    logger.level = settings.loggerLevel;
 
-	var daModuleName = "../../dataaccess/"+dbtype+"/index.js";
-	logger.info("Use dataaccess:"+daModuleName);
-	var dataaccess = new require(daModuleName)(settings);
-	
-	module.dbNames = dataaccess.dbNames
-	
-	module.initializeDatabaseConnections = function(callback/*(error)*/) {
-		dataaccess.initializeDatabaseConnections(callback);
-	}
 
-	module.createSessionInDB = function(customerId, callback /* (error, session) */) {
-		logger.debug("create session in DB:"+customerId);
+    logger.info("Using db:" + dbtype);
+    const dataaccess = new dataAccessFactories[dbtype](settings);
 
-		var now = new Date();
-		var later = new Date(now.getTime() + 1000*60*60*24);
-			
-		var document = { "_id" : uuid.v4(), "customerid" : customerId, "lastAccessedTime" : now, "timeoutTime" : later };
+    module.dbNames = dataaccess.dbNames
 
-		dataaccess.insertOne(module.dbNames.customerSessionName, document, function (error, doc){
-			if (error) callback (error, null)
-			else callback(error, document);
-		});
-	}
+    module.initializeDatabaseConnections = () => dataaccess.initializeDatabaseConnections();
 
-	module.validateSessionInDB = function(sessionId, callback /* (error, session) */){
-		logger.debug("validate session in DB:"+sessionId);
-		var now = new Date();
-		
-	    dataaccess.findOne(module.dbNames.customerSessionName, sessionId, function(err, session) {
-			if (err) callback (err, null);
-			else{
-				if (now > session.timeoutTime) {
-					daraaccess.remove(module.dbNames.customerSessionName,sessionId, function(error) {
-						callback(null, null);
-					});
-				}
-				else
-					callback(null, session);
-			}
-		});
-	}
-	
-	module.invalidateSessionInDB = function(sessionid, callback /* error */) {
-		logger.debug("invalidate session in DB:"+sessionid);
-	    dataaccess.remove(module.dbNames.customerSessionName,sessionid,callback) ;
-	}
+    module.createSessionInDB = async function (customerId) {
+        logger.debug("create session in DB:" + customerId);
 
-	module.initializeDatabaseConnections = function(callback/*(error)*/) {
-		dataaccess.initializeDatabaseConnections(callback);
-	}
-	
-	return module;
+        var now = new Date();
+        var later = new Date(now.getTime() + 1000 * 60 * 60 * 24);
+
+        var document = { "_id": uuidv4(), "customerid": customerId, "lastAccessedTime": now, "timeoutTime": later };
+
+        await dataaccess.insertOne(module.dbNames.customerSessionName, document);
+
+        return document;
+    }
+
+    module.validateSessionInDB = async function (sessionId) {
+        logger.debug("validate session in DB:" + sessionId);
+        var now = new Date();
+
+        const session = await dataaccess.findOne(module.dbNames.customerSessionName, sessionId);
+        if (now > session.timeoutTime) {
+            await dataaccess.remove(module.dbNames.customerSessionName, sessionId);
+            return null;
+        }
+        else {
+            return session;
+        }
+    }
+
+    module.invalidateSessionInDB = async function (sessionid) {
+        logger.debug("invalidate session in DB:" + sessionid);
+        await dataaccess.remove(module.dbNames.customerSessionName, sessionid);
+    }
+
+    return module;
 }

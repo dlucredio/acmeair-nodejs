@@ -1,9 +1,8 @@
-var fs = require('fs');
-var stats = require("stats-lite") // npm install stats-lite
+import fs from 'fs';
+import stats from "stats-lite"; // npm install stats-lite
 
 var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
 var rollingStatisticalWindowInMilliseconds = settings.hystrix.rollingStatisticalWindowInMilliseconds || 5000;
-exports.rollingStatisticalWindowInMilliseconds =  rollingStatisticalWindowInMilliseconds;
 
 var bucketSizeInMilliseconds =500; //create a bigger bucket;
 
@@ -17,7 +16,6 @@ var getInstance =  function(name){
 	metrixInstances[name] = metrixInstances[name] ||new Metrix(name);
 	return metrixInstances[name];
 }
-exports.getInstance = getInstance;
 
 var getInstances = function(){
 	var instances = [];
@@ -27,7 +25,6 @@ var getInstances = function(){
 	});
 	return instances;
 }
-exports.getInstances = getInstances;
 
 function Metrix(name, g) {
   this.name = name;
@@ -138,3 +135,9 @@ function housekeeping(bucket, metrix)
 	}
 
 }
+
+export default {
+    rollingStatisticalWindowInMilliseconds: rollingStatisticalWindowInMilliseconds,
+    getInstance: getInstance,
+    getInstances: getInstances
+};

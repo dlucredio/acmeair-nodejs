@@ -41,8 +41,11 @@
     dojo.addOnLoad(pageLoaded);
     
     function pageLoaded() {
+        console.log("Updating logged in user");
     	updateLoggedInUserWelcome();   	
+        console.log("Loading loader config data");
     	loadLoaderConfigData();
+        console.log("Loaded loader config data");
     }
     
     var basePath =  "rest/api/";

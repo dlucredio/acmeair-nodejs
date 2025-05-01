@@ -14,42 +14,48 @@
 * limitations under the License.
 *******************************************************************************/
 
-var fs = require('fs');
+import fs from 'fs';
+import log4js from 'log4js';
+import createRoutes from './authservice/routes/index.js';
+import express from 'express';
+import morgan from 'morgan';
+
+
+
+
 var settings = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
-var log4js = require('log4js');
 var logger = log4js.getLogger('authservice_app');
-logger.setLevel(settings.loggerLevel);
+logger.level = settings.loggerLevel;
 
 var port = (process.env.VMC_APP_PORT || process.env.VCAP_APP_PORT || settings.authservice_port);
 var host = (process.env.VCAP_APP_HOST || 'localhost');
 
-logger.info("host:port=="+host+":"+port);
+logger.info("host:port==" + host + ":" + port);
 
 var dbtype = process.env.dbtype || "mongo";
 
 //Calculate the backend datastore type if run inside BLuemix or cloud foundry
-if(process.env.VCAP_SERVICES){
-	var env = JSON.parse(process.env.VCAP_SERVICES);
-   	logger.info("env: %j",env);
-	var serviceKey = Object.keys(env)[0];
-	if (serviceKey && serviceKey.indexOf('cloudant')>-1)
-		dbtype="cloudant";
-	else if (serviceKey && serviceKey.indexOf('redis')>-1)
-		dbtype="redis";
+if (process.env.VCAP_SERVICES) {
+    var env = JSON.parse(process.env.VCAP_SERVICES);
+    logger.info("env: %j", env);
+    var serviceKey = Object.keys(env)[0];
+    if (serviceKey && serviceKey.indexOf('cloudant') > -1)
+        dbtype = "cloudant";
+    else if (serviceKey && serviceKey.indexOf('redis') > -1)
+        dbtype = "redis";
 }
-logger.info("db type=="+dbtype);
+logger.info("db type==" + dbtype);
 
-var routes = new require('./authservice/routes/index.js')(dbtype,settings); 
+
+var routes = new createRoutes(dbtype, settings);
 
 // call the packages we need
-var express    = require('express'); 		
-var app        = express(); 				
-var morgan         = require('morgan');
+var app = express();
 
 if (settings.useDevLogger)
-	app.use(morgan('dev'));                     		// log every request to the console
+    app.use(morgan('dev'));                     		// log every request to the console
 
-var router = express.Router(); 		
+var router = express.Router();
 
 router.post('/byuserid/:user', createToken);
 router.get('/:tokenid', validateToken);
@@ -57,96 +63,85 @@ router.get('/status', checkStatus);
 router.delete('/:tokenid', invalidateToken);
 
 // REGISTER OUR ROUTES so that all of routes will have prefix 
-app.use(settings.authContextRoot+'/authtoken', router);
+app.use(settings.authContextRoot + '/authtoken', router);
 
 var initialized = false;
 var serverStarted = false;
 
 initDB();
 
-function initDB(){
-    if (initialized ) return;
-	routes.initializeDatabaseConnections(function(error) {
-			if (error) {
-				logger.error('Error connecting to database - exiting process: '+ error);
-				// Do not stop the process for debug in container service
-				//process.exit(1); 
-			}else
-			{
-				initialized =true;
-				logger.info("Initialized database connections");
-			}
-			startServer();
-	});
+async function initDB() {
+    if (initialized) return;
+    try {
+        await routes.initializeDatabaseConnections();
+        initialized = true;
+        logger.info("Initialized database connections");
+    } catch (error) {
+        logger.error('Error connecting to database - exiting process: ' + error);
+        // Do not stop the process for debug in container service
+        //process.exit(1); 
+    }
+    startServer();
 }
 
 
 function startServer() {
-	if (serverStarted ) return;
-	serverStarted = true;
-	app.listen(port);
-	console.log('Application started port ' + port);
+    if (serverStarted) return;
+    serverStarted = true;
+    app.listen(port);
+    console.log('Application started port ' + port);
 }
 
-function checkStatus(req, res){
-	res.sendStatus(200);
+function checkStatus(req, res) {
+    res.sendStatus(200);
 }
 
-function createToken(req, res){
-	logger.debug('create token by user ' + req.params.user);
-	if (!initialized)
-    {
-		logger.info("please wait for db connection initialized then trigger again.");
-		initDB();
-		res.send(403);
-	}else
-	{
-		routes.createSessionInDB(req.params.user, function(error, cs){
-		if (error){
-		 	res.status(404).send(error);
-		}
-		else{
-			res.send(JSON.stringify(cs));
-		}
-	    })
-	}
+async function createToken(req, res) {
+    logger.debug('create token by user ' + req.params.user);
+    if (!initialized) {
+        logger.info("please wait for db connection initialized then trigger again.");
+        await initDB();
+        res.send(403);
+    } else {
+        try {
+            const cs = await routes.createSessionInDB(req.params.user);
+            res.send(JSON.stringify(cs));
+        } catch (error) {
+            res.status(404).send(error);
+        }
+    }
 }
 
-function validateToken(req, res){
-	logger.debug('validate token ' + req.params.tokenid);
-	if (!initialized)
-    {
-		logger.info("please wait for db connection initialized then trigger again.");
-		initDB();
-		res.send(403);
-	}else
-	{
-		routes.validateSessionInDB(req.params.tokenid, function(error, cs){
-	     if (error){
-		 	res.status(404).send(error);
-		}
-		else{
-			 res.send(JSON.stringify(cs));
-		}
-	    })
-	}
+async function validateToken(req, res) {
+    logger.debug('validate token ' + req.params.tokenid);
+    if (!initialized) {
+        logger.info("please wait for db connection initialized then trigger again.");
+        await initDB();
+        res.send(403);
+    } else {
+        try {
+            const cs = await routes.validateSessionInDB(req.params.tokenid);
+            res.send(JSON.stringify(cs));
+        } catch (error) {
+            res.status(404).send(error);
+        }
+    }
 }
 
-function invalidateToken(req, res){
-	logger.debug('invalidate token ' + req.params.tokenid);
-	if (!initialized)
-    {
-		logger.info("please wait for db connection initialized then trigger again.");
-		initDB();
-		res.send(403);
-	}else
-	{
-		routes.invalidateSessionInDB(req.params.tokenid, function(error){
-		if (error){
-		 	res.status(404).send(error);
-		}
-		else res.sendStatus(200);
-	    })
-	}
+async function invalidateToken(req, res) {
+    logger.debug('invalidate token ' + req.params.tokenid);
+    if (!initialized) {
+        logger.info("please wait for db connection initialized then trigger again.");
+        await initDB();
+        res.send(403);
+    } else {
+        try {
+            await routes.invalidateSessionInDB(req.params.tokenid);
+            res.sendStatus(200);
+        }
+        catch (error) {
+            res.status(404).send(error);
+        }
+    }
 }
 

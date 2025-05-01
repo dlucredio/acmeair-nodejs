@@ -13,11 +13,11 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 *******************************************************************************/
+import hystrix from '../netflix/hystrix/index.js';
+import command from '../netflix/hystrix/command.js';
 
-module.exports = function (authService,settings) {
+export default function (authService, settings) {
     var module = {};
-	var hystrix = require('../netflix/hystrix/index.js');
-	var command = require('../netflix/hystrix/command.js');
 
 	module.hystrixStream = function(request, response){
 		hystrix.hystrixStream(request, response);

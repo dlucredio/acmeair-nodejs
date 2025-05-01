@@ -1,6 +1,6 @@
-var fs = require('fs');
-var CircuitBreaker = require('circuit-breaker') //npm install circuit-breaker
-var Metrix = require('./metrix.js')
+import fs from 'fs';
+import CircuitBreaker from 'circuit-breaker'; //npm install circuit-breaker
+import Metrix from './metrix.js';
 
 var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
 var defaultOption ={MAX_FAILURES:5,CALL_TIMEOUT_MS :10000, RESET_TIMEOUT_MS:60000}
@@ -18,9 +18,13 @@ var getCommand = function (name, theWork,callback/*error, command*/){
 	}
 	callback (null, AllCommands[name] )
 }
-exports.getCommand = getCommand;
 
-exports.getInstance = function(name){ return AllCommands[name]}; // 
+function getInstance(name){ return AllCommands[name]}; // 
+
+export default {
+    getCommand: getCommand,
+    getInstance: getInstance
+}
 
 var Command = function(name, theWork,maxFailures, callTimeout, resetTimeout)
   {
