@@ -20,4 +20,4 @@ EXPOSE 9080 9443
 ENV MONGO_URL mongodb://mongo:27017/acmeair
 #ENV CLOUDANT_URL
 
-ENTRYPOINT [ "node", "app.js"]
+ENTRYPOINT [ "node", "src/app.js"]

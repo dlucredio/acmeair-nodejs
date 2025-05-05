@@ -29,7 +29,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 
-var settings = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
+var settings = JSON.parse(fs.readFileSync('./src/settings.json', 'utf8'));
 
 var logger = log4js.getLogger('app');
 logger.level = settings.loggerLevel;
@@ -40,11 +40,6 @@ var host = (process.env.VCAP_APP_HOST || 'localhost');
 
 logger.info("host:port==" + host + ":" + port);
 
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-logger.info("App root directory: " + __dirname);
 
 
 var authService;
@@ -104,7 +99,7 @@ const loader = new createLoader(routes, settings);
 
 var app = express();
 
-app.use(express.static(path.join(__dirname, 'public')));     	// set the static files location /public/img will be /img for users
+app.use(express.static('public'));     	// set the static files location /public/img will be /img for users
 if (settings.useDevLogger)
     app.use(morgan('dev'));                     		// log every request to the console
 

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import streamHandler from './streamHandler.js';
 
-var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
+var settings = JSON.parse(fs.readFileSync('./src/netflix/hystrix.json', 'utf8'));
 var refreshInterval = settings.hystrix.refreshInterval || 500;
 
 var hystrixMetricsStreamHandlerFactory = this; // default to self
