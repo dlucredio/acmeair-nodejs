@@ -1,37 +1,23 @@
-# Format: FROM    repository[:version]
-FROM       ubuntu:latest
+FROM node:slim
 
-# Format: MAINTAINER Name <email@addr.ess>
-MAINTAINER Yang Lei <yanglei@us.ibm.com>
+WORKDIR /home/node/app
 
-# Installation:
+# Let's first install the packages (to better cache layers)
+COPY package*.json ./
+RUN npm install
 
-# Update apt-get sources AND install NodeJS and npm
-RUN apt-get update && apt-get install -y nodejs && apt-get install -y npm 
+# Now we can copy the rest (ignoring content from .dockerignore)
+COPY . .
 
-# The real logic
-
-ADD ./ /var/apps/acmeair-nodejs
-
-RUN \
-  rm -fr /var/apps/acmeair-nodejs/.git ;\
-  cd /var/apps/acmeair-nodejs ;\
-  npm install;\
-  chmod +x run.sh
-
-
-WORKDIR /var/apps/acmeair-nodejs
-
+# 9080 is the app
+# 9443 is for the auth service (is using one)
 EXPOSE 9080 9443
-
-ENV APP_NAME app.js
 
 # Use the following to indicate authentication micro-service location: host:port
 #ENV AUTH_SERVICE
 
 # Use the following environment variable to define datasource location
-#ENV MONGO_URL mongodb://localhost:27017/acmeair
+ENV MONGO_URL mongodb://mongo:27017/acmeair
 #ENV CLOUDANT_URL
 
-
-CMD ["./run.sh"]
+ENTRYPOINT [ "node", "app.js"]

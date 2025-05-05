@@ -132,7 +132,7 @@ export default function (dbtype, authService, settings) {
         }
 
         let [flightSegmentOutbound, flightsOutbound] = await getFlightByAirportsAndDepartureDate(fromAirport, toAirport, fromDate);
-        logger.debug('flightsOutbound = ' + flightsOutbound);
+        logger.debug('flightsOutbound = ' + JSON.stringify(flightsOutbound));
         if (flightsOutbound) {
             for (let ii = 0; ii < flightsOutbound.length; ii++) {
                 flightsOutbound[ii].flightSegment = flightSegmentOutbound;

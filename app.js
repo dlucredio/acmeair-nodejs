@@ -200,19 +200,33 @@ async function startLoadDatabase(req, res) {
     }
 }
 
+
 async function initDB() {
     if (initialized) return;
 
-    try {
-        await routes.initializeDatabaseConnections();
-        initialized = true;
-        logger.info("Initialized database connections");
-        startServer();
+    const maxRetries = 5; // Máximo de tentativas
+    let attempts = 0;
 
-    } catch (error) {
-        logger.info('Error connecting to database - exiting process: ' + error);
-        // Do not stop the process for debug in container service
-        //process.exit(1); 
+    while (attempts < maxRetries) {
+        try {
+            await routes.initializeDatabaseConnections(); // Tenta inicializar a conexão
+            initialized = true;
+            logger.info("Initialized database connections");
+            startServer();
+            return; // Se a conexão for bem-sucedida, sai da função
+        } catch (error) {
+            attempts++;
+            logger.info(`Error connecting to database (Attempt ${attempts}/${maxRetries}) - ${error.message}`);
+
+            if (attempts < maxRetries) {
+                logger.info('Retrying in 10 seconds...');
+                await new Promise(resolve => setTimeout(resolve, 10000)); // Espera 10 segundos antes de tentar novamente
+            } else {
+                logger.error('Max retries reached. Could not connect to database.');
+                // Do not stop the process for debug in container service
+                //process.exit(1); 
+            }
+        }
     }
 }
 
