@@ -2,7 +2,7 @@ import fs from 'fs';
 import CircuitBreaker from 'circuit-breaker'; //npm install circuit-breaker
 import Metrix from './metrix.js';
 
-var settings = JSON.parse(fs.readFileSync('./src/netflix/hystrix.json', 'utf8'));
+var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
 var defaultOption ={MAX_FAILURES:5,CALL_TIMEOUT_MS :10000, RESET_TIMEOUT_MS:60000}
 
 global.AllCommands = {};

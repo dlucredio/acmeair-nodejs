@@ -2,7 +2,7 @@ import fs from 'fs';
 import metrix from './metrix.js';
 import command from './command.js';
 
-var settings = JSON.parse(fs.readFileSync('./src/netflix/hystrix.json', 'utf8'));
+var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
 var streamMaxConn = settings.hystrix.stream.maxConcurrentConnections || 5;
 
 global.concurrentConnections = 0;

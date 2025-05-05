@@ -1,7 +1,7 @@
 import fs from 'fs';
 import stats from "stats-lite"; // npm install stats-lite
 
-var settings = JSON.parse(fs.readFileSync('./src/netflix/hystrix.json', 'utf8'));
+var settings = JSON.parse(fs.readFileSync('./netflix/hystrix.json', 'utf8'));
 var rollingStatisticalWindowInMilliseconds = settings.hystrix.rollingStatisticalWindowInMilliseconds || 5000;
 
 var bucketSizeInMilliseconds =500; //create a bigger bucket;

@@ -26,7 +26,7 @@ export default function (loadUtil, settings) {
     var logger = log4js.getLogger('loader');
     logger.level = settings.loggerLevel;
 
-    var loaderSettings = JSON.parse(fs.readFileSync('./src/loader/loader-settings.json', 'utf8'));
+    var loaderSettings = JSON.parse(fs.readFileSync('./loader/loader-settings.json', 'utf8'));
 
     var DATABASE_PARALLELISM = 5;
 
@@ -193,7 +193,7 @@ export default function (loadUtil, settings) {
             var rows = new Array();
             let index = 0;
 
-            fs.createReadStream('./src/loader/mileage.csv')
+            fs.createReadStream('./loader/mileage.csv')
                 .pipe(parse({
                     delimiter: ',',
                     from_line: 1,
