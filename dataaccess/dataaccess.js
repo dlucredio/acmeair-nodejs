@@ -41,7 +41,7 @@ export default async function getInstance() {
     
                 if (attempts < maxRetries) {
                     logger.info('Retrying in 10 seconds...');
-                    await new Promise(resolve => setTimeout(resolve, 10000)); // Espera 10 segundos antes de tentar novamente
+                    await new Promise(resolve => setTimeout(resolve, 10000));
                 } else {
                     logger.error('Max retries reached. Could not connect to database.');
                     throw error;

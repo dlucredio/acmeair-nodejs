@@ -99,7 +99,8 @@ async function logout(req, res) {
 
 async function loadDatabase(req, res) {
     logger.info("Started to load database...");
-    loader.startLoadDatabase(req, res);
+    const result = await loader.startLoadDatabase(req.query.numCustomers);
+    res.send(result);
 }
 
 app.listen(port);

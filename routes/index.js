@@ -44,6 +44,8 @@ async function checkForValidSessionCookie(req, res, next) {
         res.sendStatus(403);
         return;
     }
+    logger.debug("Validating session cookie. Sessionid="+sessionid);
+
 
     try {
         const customerid = await validateSession(sessionid);
@@ -81,6 +83,7 @@ async function login(req, res) {
             try {
                 const sessionid = await createSession(login);
                 res.cookie('sessionid', sessionid);
+                logger.debug("Logged in. Session id="+sessionid);
                 res.send('logged in');
             } catch (error) {
                 logger.info(error);

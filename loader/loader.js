@@ -124,29 +124,34 @@ async function insertFlight(flight) {
     logger.debug('flight inserted = ' + JSON.stringify(flightInserted));
 }
 
-async function startLoadDatabase(req, res) { // TODO: modify to allow distribution
-    if (customers.length >= 1) {
-        res.send('Already loaded');
-        return;
-    }
-    var numCustomers = req.query.numCustomers;
-    if (numCustomers === undefined) {
-        numCustomers = loaderSettings.MAX_CUSTOMERS;
-    }
-    logger.info('starting loading database');
-    createCustomers(numCustomers);
-    await createFlightRelatedData();
-    logger.info('number of customers = ' + customers.length);
-    logger.info('number of airportCodeMappings = ' + airportCodeMappings.length);
-    logger.info('number of flightSegments = ' + flightSegments.length);
-    logger.info('number of flights = ' + flights.length);
-    flightQueue.drain(function () {
-        logger.info('all flights loaded');
-        logger.info('ending loading database');
-        res.send('Database Finished Loading');
+async function startLoadDatabase(numCustomers) {
+    return await new Promise(async (resolve, reject) => {
+        try {
+            if (customers.length >= 1) {
+                resolve('Already loaded');
+                return;
+            }
+            if (numCustomers === undefined) {
+                numCustomers = loaderSettings.MAX_CUSTOMERS;
+            }
+            logger.info('starting loading database');
+            createCustomers(numCustomers);
+            await createFlightRelatedData();
+            logger.info('number of customers = ' + customers.length);
+            logger.info('number of airportCodeMappings = ' + airportCodeMappings.length);
+            logger.info('number of flightSegments = ' + flightSegments.length);
+            logger.info('number of flights = ' + flights.length);
+            flightQueue.drain(function () {
+                logger.info('all flights loaded');
+                logger.info('ending loading database');
+                resolve('Database Finished Loading');
+            });
+            customerQueue.push(customers);
+            //res.send('Trigger DB loading');
+        } catch (error) {
+            reject(error);
+        }
     });
-    customerQueue.push(customers);
-    //res.send('Trigger DB loading');
 }
 
 function getNumConfiguredCustomers(req, res) {
