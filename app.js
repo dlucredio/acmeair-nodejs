@@ -15,21 +15,14 @@
 *******************************************************************************/
 
 import express from 'express';
-import fs from 'fs';
 import log4js from 'log4js';
-import createAuthService from './acmeairhttp/index.js';
-import createHystrixService from './acmeaircmd/index.js';
-import createRoutes from './routes/index.js';
-import createLoader from './loader/loader.js';
+import routes from './routes/index.js';
+import loader from './loader/loader.js';
 import morgan from 'morgan';
 import bodyParser from 'body-parser';
 import methodOverride from 'method-override';
 import cookieParser from 'cookie-parser';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-
-var settings = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
+import { settings } from './globals.js';
 
 var logger = log4js.getLogger('app');
 logger.level = settings.loggerLevel;
@@ -40,71 +33,14 @@ var host = (process.env.VCAP_APP_HOST || 'localhost');
 
 logger.info("host:port==" + host + ":" + port);
 
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-logger.info("App root directory: " + __dirname);
-
-
-var authService;
-var authServiceLocation = process.env.AUTH_SERVICE;
-
-// The following commented old code allowed the developer to choose between a local authorization module or
-// HTTP authorization. But it uses dynamic require-style modules, which is not supported in the current modified version
-// of ACME Air. The new code below only supports HTTP-based authorization.
-// if (authServiceLocation) {
-//     logger.info("Use authservice:" + authServiceLocation);
-//     var authModule;
-//     if (authServiceLocation.indexOf(":") > 0) // This is to use micro services
-//         authModule = "acmeairhttp";
-//     else
-//         authModule = authServiceLocation;
-
-//     authService = new require('./' + authModule + '/index.js')(settings);
-//     if (authService && "true" == process.env.enableHystrix) // wrap into command pattern
-//     {
-//         logger.info("Enabled Hystrix");
-//         authService = new require('./acmeaircmd/index.js')(authService, settings);
-//     }
-// }
-
-
-if (authServiceLocation) {
-    logger.info("Use authservice:" + authServiceLocation);
-    authService = new createAuthService(settings);
-    if (authService && "true" == process.env.enableHystrix) // wrap into command pattern
-    {
-        logger.info("Enabled Hystrix");
-        authService = new createHystrixService(authService, settings);
-    }
-}
-
-
-
-var dbtype = process.env.dbtype || "mongo";
-
-// Calculate the backend datastore type if run inside BLuemix or cloud foundry
-if (process.env.VCAP_SERVICES) {
-    var env = JSON.parse(process.env.VCAP_SERVICES);
-    logger.info("env: %j", env);
-    var serviceKey = Object.keys(env)[0];
-    if (serviceKey && serviceKey.indexOf('cloudant') > -1)
-        dbtype = "cloudant";
-    else if (serviceKey && serviceKey.indexOf('redis') > -1)
-        dbtype = "redis";
-}
-logger.info("db type==" + dbtype);
-
-
-const routes = new createRoutes(dbtype, authService, settings);
-const loader = new createLoader(routes, settings);
+// const routes = new createRoutes();
+// const loader = new createLoader(routes, settings);
 
 // Setup express with 4.0.0
 
 var app = express();
 
-app.use(express.static(path.join(__dirname, 'public')));     	// set the static files location /public/img will be /img for users
+app.use(express.static('public'));     	// set the static files location /public/img will be /img for users
 if (settings.useDevLogger)
     app.use(morgan('dev'));                     		// log every request to the console
 
@@ -141,99 +77,30 @@ router.get('/config/countFlights', routes.countFlights);
 router.get('/config/countFlightSegments', routes.countFlightSegments);
 router.get('/config/countAirports', routes.countAirports);
 //router.get('/loaddb', startLoadDatabase);
-router.get('/loader/load', startLoadDatabase);
+router.get('/loader/load', loadDatabase);
 router.get('/loader/query', loader.getNumConfiguredCustomers);
 router.get('/checkstatus', checkStatus);
-
-if (authService && authService.hystrixStream)
-    app.get('/rest/api/hystrix.stream', authService.hystrixStream);
 
 
 //REGISTER OUR ROUTES so that all of routes will have prefix 
 app.use(settings.contextRoot, router);
-
-// Only initialize DB after initialization of the authService is done
-var initialized = false;
-var serverStarted = false;
-
-if (authService && authService.initialize) {
-    authService.initialize(function () {
-        initDB();
-    });
-}
-else
-    initDB();
-
 
 function checkStatus(req, res) {
     res.sendStatus(200);
 }
 
 async function login(req, res) {
-    if (!initialized) {
-        logger.info("please wait for db connection initialized then trigger again.");
-        await initDB();
-        res.sendStatus(403);
-    } else {
-        await routes.login(req, res);
-    }
+    await routes.login(req, res);
 }
 
 async function logout(req, res) {
-    if (!initialized) {
-        logger.info("please wait for db connection initialized then trigger again.");
-        await initDB();
-        res.sendStatus(400);
-    } else
-        await routes.logout(req, res);
+    await routes.logout(req, res);
 }
 
-async function startLoadDatabase(req, res) {
-    logger.info("Start load Database");
-    if (!initialized) {
-        logger.info("please wait for db connection initialized then trigger again.");
-        await initDB();
-        res.sendStatus(400);
-    } else {
-        logger.info("Started to load database...");
-        loader.startLoadDatabase(req, res);
-    }
+async function loadDatabase(req, res) {
+    logger.info("Started to load database...");
+    loader.startLoadDatabase(req, res);
 }
 
-
-async function initDB() {
-    if (initialized) return;
-
-    const maxRetries = 5; // Máximo de tentativas
-    let attempts = 0;
-
-    while (attempts < maxRetries) {
-        try {
-            await routes.initializeDatabaseConnections(); // Tenta inicializar a conexão
-            initialized = true;
-            logger.info("Initialized database connections");
-            startServer();
-            return; // Se a conexão for bem-sucedida, sai da função
-        } catch (error) {
-            attempts++;
-            logger.info(`Error connecting to database (Attempt ${attempts}/${maxRetries}) - ${error.message}`);
-
-            if (attempts < maxRetries) {
-                logger.info('Retrying in 10 seconds...');
-                await new Promise(resolve => setTimeout(resolve, 10000)); // Espera 10 segundos antes de tentar novamente
-            } else {
-                logger.error('Max retries reached. Could not connect to database.');
-                // Do not stop the process for debug in container service
-                //process.exit(1); 
-            }
-        }
-    }
-}
-
-
-function startServer() {
-    if (serverStarted) return;
-    serverStarted = true;
-    app.listen(port);
-    logger.info("Express server listening on port " + port);
-}
+app.listen(port);
+logger.info("Express server listening on port " + port);

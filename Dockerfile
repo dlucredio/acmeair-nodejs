@@ -10,11 +10,8 @@ RUN npm install
 COPY . .
 
 # 9080 is the app
-# 9443 is for the auth service (is using one)
-EXPOSE 9080 9443
+EXPOSE 9080
 
-# Use the following to indicate authentication micro-service location: host:port
-#ENV AUTH_SERVICE
 
 # Use the following environment variable to define datasource location
 ENV MONGO_URL mongodb://mongo:27017/acmeair
